@@ -7,8 +7,6 @@ class Grabber:
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.socket.settimeout(5)
 
-
-
     def read(self, length=1024):
         try:
             self.socket.connect((self.ip, self.port))
@@ -19,7 +17,6 @@ class Grabber:
         with self.socket as s:
             s.settimeout(5)
             return s.recv(length)     # Takes a set number of bytes received from the socket connection using cntx manager
-
 
 def main():
     grabber = Grabber('192.168.0.63', 221)

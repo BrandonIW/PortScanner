@@ -23,12 +23,15 @@ from Banner_Reading_from_Open_Ports import Grabber
 # our case will be the port numbers. Since our threads run simultaneously and scan the ports, we use queues to make sure
 # that every port is only scanned once.
 
+
 class Scanner:
     # IP Address Input Validation
-    regex = re.compile(r'^([1-9]){1}(\d){0,2}\.(\d){1,3}\.(\d){1,3}\.(\d){1,3}$')
+    regex = re.compile(
+        r'^([1-9]){1}(\d){0,2}\.(\d){1,3}\.(\d){1,3}\.(\d){1,3}$')
 
     # Hostname Input Validation
-    regex_hostname = re.compile(r'^(http:\/\/www\.|https:\/\/www\.|http:\/\/|https:\/\/)?[a-z0-9]+([\-\.]{1}[a-z0-9]+)*\.[a-z]{2,5}(:[0-9]{1,5})?(\/.*)?$')
+    regex_hostname = re.compile(
+        r'^(http:\/\/www\.|https:\/\/www\.|http:\/\/|https:\/\/)?[a-z0-9]+([\-\.]{1}[a-z0-9]+)*\.[a-z]{2,5}(:[0-9]{1,5})?(\/.*)?$')
 
 ####### Logging ########
     # Create logger
@@ -41,7 +44,8 @@ class Scanner:
     logger.addHandler(info_file_handler)
 
     # Formatting for handler
-    formatter = logging.Formatter('%(asctime)s:%(levelname)s:%(message)s:%(name)s')
+    formatter = logging.Formatter(
+        '%(asctime)s:%(levelname)s:%(message)s:%(name)s')
 
     # Add formatting to handler
     info_file_handler.setFormatter(formatter)
@@ -57,9 +61,13 @@ class Scanner:
         # Input IP to Scan
         self.ip = input("Enter the IP address or hostname to scan: ")
 
-        #If hostname, convert to IP
+        # If hostname, convert to IP
         if Scanner.regex_hostname.fullmatch(self.ip):
-            self.ip = socket.gethostbyname('google.ca')
+            try:
+                self.ip = socket.gethostbyname(self.ip)
+            except socket.gaierror:
+                self.ip = self.ip[8:]
+                self.ip = socket.gethostbyname(self.ip)
 
         # Create an empty queue. These will store our ports
         self.queue = Queue()
@@ -75,21 +83,24 @@ class Scanner:
     def __repr__(self):
         return f"Scanner IP: {self.ip}"
 
-
     def is_open(self, port):
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)         # Create a socket connection
-        sock.settimeout(2)                                               # Set socket timeout
-
+        # Create a socket connection
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        # Set socket timeout
+        sock.settimeout(2)
 
         while True:
             try:
                 print(f"Scanning port {port} on IP {self.ip}")
-                result = sock.connect_ex((self.ip,port))                 # Returns 0 if successful socket connection
+                # Returns 0 if successful socket connection
+                result = sock.connect_ex((self.ip, port))
 
                 if result == 0:
-                    Scanner.logger.info(f"Port: {port} is open at IP: {self.ip}")
+                    Scanner.logger.info(
+                        f"Port: {port} is open at IP: {self.ip}")
                 else:
-                    Scanner.logger.info(f"Port: {port} is closed at IP: {self.ip}")
+                    Scanner.logger.info(
+                        f"Port: {port} is closed at IP: {self.ip}")
 
                 sock.close()
                 return result
@@ -100,13 +111,12 @@ class Scanner:
 
     # Adds multiple ports to queue
     def scan_range(self, lowerport, upperport):
-        for port in range(int(lowerport),int(upperport)+1):
+        for port in range(int(lowerport), int(upperport) + 1):
             self.queue.put(port)
 
     # Adds single port to queue
-    def scan_port(self,port):
+    def scan_port(self, port):
         self.queue.put(port)
-
 
     def worker(self):
         while not self.queue.empty():
@@ -114,12 +124,13 @@ class Scanner:
 
             if self.is_open(port) == 0:
                 try:
-                    banner = Grabber(self.ip,port).read()
-
+                    banner = Grabber(self.ip, port).read()
+                    banner = banner.decode().strip('\r\n')
                 except socket.timeout:
                     banner = "N/A"
 
-                self.open_ports.append(f"Port {port} at IP {self.ip} is open. Banner is: {banner}")
+                self.open_ports.append(
+                    f"Port {port} at IP {self.ip} is open. Banner is: {banner}")
 
         if self.open_ports:
             self.write()
@@ -133,6 +144,7 @@ class Scanner:
             for x in self.open_ports:
                 file.write(f"{x}\n")
 
+
 def main(threads=10):
     # Boolean to ask user if they want to scan another port or ports
     scanning = True
@@ -144,12 +156,14 @@ def main(threads=10):
 
         # Select type of scan to perform
         acceptable_inputs = ['1', '2', '3', '4']
-        choice = input("\n1. Scan Single Port\n2. Scan Custom Range of Ports\n3. Scan Common Ports (1-1024)\n4. Scan all ports (1-655535)\nChoose option 1-4: ")
+        choice = input(
+            "\n1. Scan Single Port\n2. Scan Custom Range of Ports\n3. Scan Common Ports (1-1024)\n4. Scan all ports (1-65535)\nChoose option 1-4: ")
 
         while choice not in acceptable_inputs:
             print("Invalid input.")
             sleep(2)
-            choice = input("\n1. Scan Single Port\n2. Scan Custom Range of Ports\n3. Scan Common Ports (1-1024)\n4. Scan all ports (1-655535)\nChoose option 1-4: ")
+            choice = input(
+                "\n1. Scan Single Port\n2. Scan Custom Range of Ports\n3. Scan Common Ports (1-1024)\n4. Scan all ports (1-65535)\nChoose option 1-4: ")
 
         # Select single port to scan
         if choice == "1":
@@ -165,9 +179,8 @@ def main(threads=10):
                     print("Error. Must be an integer")
                     sleep(1)
 
-
-
-        # Select range of ports. We unpack from the regex.search method to separate delimiter
+        # Select range of ports. We unpack from the regex.search method to
+        # separate delimiter
         if choice == "2":
             port_range = input("Input port range. e.g. 22-34: ")
 
@@ -176,14 +189,15 @@ def main(threads=10):
                 port_range = input("Invalid input. Try again. e.g. 22-34: ")
 
             # If match, separate based on groups and run
-            lower,upper = regex.search(port_range).group(1,3)
+            lower, upper = regex.search(port_range).group(1, 3)
 
             while (int(lower) > int(upper)):
-                port_range = input("Port range must be in ascending order. Input port range e.g. 22-34: ")
-                lower,upper = regex.search(port_range).group(1,3)
+                port_range = input(
+                    "Port range must be in ascending order. Input port range e.g. 22-34: ")
+                lower, upper = regex.search(port_range).group(1, 3)
 
             my_scan = Scanner()
-            my_scan.scan_range(lower,upper) # Adds to queue
+            my_scan.scan_range(lower, upper)  # Adds to queue
 
             with ThreadPoolExecutor() as executor:
                 for _ in range(threads):
@@ -191,13 +205,14 @@ def main(threads=10):
 
             if my_scan.open_ports:
                 my_scan.write()
-                print("Port scan completed and found one or more open ports. Results can be found in Scan_Results.txt file")
+                print(
+                    "Port scan completed and found one or more open ports. Results can be found in Scan_Results.txt file")
             else:
                 print(f"No open ports were detected at ip {my_scan.ip}")
 
         if choice == "3":
             my_scan = Scanner()
-            my_scan.scan_range(0,1024) # Adds to queue
+            my_scan.scan_range(0, 1024)  # Adds to queue
 
             with ThreadPoolExecutor() as executor:
                 for _ in range(threads):
@@ -205,16 +220,14 @@ def main(threads=10):
 
             if my_scan.open_ports:
                 my_scan.write()
-                print("Port scan completed and found one or more open ports. Results can be found in Scan_Results.txt file")
+                print(
+                    "Port scan completed and found one or more open ports. Results can be found in Scan_Results.txt file")
             else:
                 print(f"No open ports were detected at ip {my_scan.ip}")
 
-        if input("Do you want to scan again? (Y/N)").lower() in ["no", "n"]:
-            scanning = False
-
         if choice == "4":
             my_scan = Scanner()
-            my_scan.scan_range(0,65535) # Adds to queue
+            my_scan.scan_range(0, 65535)  # Adds to queue
 
             with ThreadPoolExecutor() as executor:
                 for _ in range(threads):
@@ -222,7 +235,8 @@ def main(threads=10):
 
             if my_scan.open_ports:
                 my_scan.write()
-                print("Port scan completed and found one or more open ports. Results can be found in Scan_Results.txt file")
+                print(
+                    "Port scan completed and found one or more open ports. Results can be found in Scan_Results.txt file")
             else:
                 print(f"No open ports were detected at ip {my_scan.ip}")
 
@@ -232,6 +246,5 @@ def main(threads=10):
     print("You've exited the program")
 
 
-
 if __name__ == '__main__':
-    main() #Optional thread arg.
+    main()  # Optional thread arg.
